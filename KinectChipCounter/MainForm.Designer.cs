@@ -35,12 +35,12 @@
             this.imageBox1 = new Emgu.CV.UI.ImageBox();
             this.btnCapture = new System.Windows.Forms.Button();
             this.imageBox2 = new Emgu.CV.UI.ImageBox();
-            this.trackBar1 = new System.Windows.Forms.TrackBar();
-            this.trackBar2 = new System.Windows.Forms.TrackBar();
+            this.analysisImgBox = new Emgu.CV.UI.ImageBox();
+            this.hueGraph = new Emgu.CV.UI.ImageBox();
             ((System.ComponentModel.ISupportInitialize)(this.imageBox1)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.imageBox2)).BeginInit();
-            ((System.ComponentModel.ISupportInitialize)(this.trackBar1)).BeginInit();
-            ((System.ComponentModel.ISupportInitialize)(this.trackBar2)).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)(this.analysisImgBox)).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)(this.hueGraph)).BeginInit();
             this.SuspendLayout();
             // 
             // btnTiltUp
@@ -76,7 +76,7 @@
             // 
             this.imageBox1.Location = new System.Drawing.Point(108, 13);
             this.imageBox1.Name = "imageBox1";
-            this.imageBox1.Size = new System.Drawing.Size(400, 300);
+            this.imageBox1.Size = new System.Drawing.Size(640, 480);
             this.imageBox1.TabIndex = 2;
             this.imageBox1.TabStop = false;
             // 
@@ -92,36 +92,35 @@
             // 
             // imageBox2
             // 
-            this.imageBox2.Location = new System.Drawing.Point(514, 12);
+            this.imageBox2.Location = new System.Drawing.Point(754, 12);
             this.imageBox2.Name = "imageBox2";
-            this.imageBox2.Size = new System.Drawing.Size(400, 300);
+            this.imageBox2.Size = new System.Drawing.Size(640, 480);
             this.imageBox2.TabIndex = 4;
             this.imageBox2.TabStop = false;
             // 
-            // trackBar1
+            // analysisImgBox
             // 
-            this.trackBar1.Location = new System.Drawing.Point(514, 318);
-            this.trackBar1.Maximum = 1000;
-            this.trackBar1.Name = "trackBar1";
-            this.trackBar1.Size = new System.Drawing.Size(400, 56);
-            this.trackBar1.TabIndex = 5;
+            this.analysisImgBox.Location = new System.Drawing.Point(108, 499);
+            this.analysisImgBox.Name = "analysisImgBox";
+            this.analysisImgBox.Size = new System.Drawing.Size(640, 480);
+            this.analysisImgBox.TabIndex = 7;
+            this.analysisImgBox.TabStop = false;
             // 
-            // trackBar2
+            // hueGraph
             // 
-            this.trackBar2.Location = new System.Drawing.Point(514, 353);
-            this.trackBar2.Maximum = 1000;
-            this.trackBar2.Name = "trackBar2";
-            this.trackBar2.Size = new System.Drawing.Size(400, 56);
-            this.trackBar2.TabIndex = 6;
-            this.trackBar2.Value = 1000;
+            this.hueGraph.Location = new System.Drawing.Point(754, 501);
+            this.hueGraph.Name = "hueGraph";
+            this.hueGraph.Size = new System.Drawing.Size(640, 480);
+            this.hueGraph.TabIndex = 8;
+            this.hueGraph.TabStop = false;
             // 
             // MainForm
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(8F, 16F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(931, 407);
-            this.Controls.Add(this.trackBar2);
-            this.Controls.Add(this.trackBar1);
+            this.ClientSize = new System.Drawing.Size(1409, 993);
+            this.Controls.Add(this.hueGraph);
+            this.Controls.Add(this.analysisImgBox);
             this.Controls.Add(this.imageBox2);
             this.Controls.Add(this.btnCapture);
             this.Controls.Add(this.imageBox1);
@@ -132,8 +131,8 @@
             this.Text = "Form1";
             ((System.ComponentModel.ISupportInitialize)(this.imageBox1)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this.imageBox2)).EndInit();
-            ((System.ComponentModel.ISupportInitialize)(this.trackBar1)).EndInit();
-            ((System.ComponentModel.ISupportInitialize)(this.trackBar2)).EndInit();
+            ((System.ComponentModel.ISupportInitialize)(this.analysisImgBox)).EndInit();
+            ((System.ComponentModel.ISupportInitialize)(this.hueGraph)).EndInit();
             this.ResumeLayout(false);
             this.PerformLayout();
 
@@ -147,8 +146,8 @@
         private Emgu.CV.UI.ImageBox imageBox1;
         private System.Windows.Forms.Button btnCapture;
         private Emgu.CV.UI.ImageBox imageBox2;
-        private System.Windows.Forms.TrackBar trackBar1;
-        private System.Windows.Forms.TrackBar trackBar2;
+        private Emgu.CV.UI.ImageBox analysisImgBox;
+        private Emgu.CV.UI.ImageBox hueGraph;
 
     }
 }
