@@ -3,22 +3,16 @@ KinectChipCounter
 
 A Kinect application designed to look at a poker table and count the chips.
 
-Please note . . . dll references are there, but the dlls are not.  Nothing is included with this project that you can't download yourself.
+This used to be a pain in the ass to get wired up and ready to go, but I set up the dependencies to be resolved with NuGet.
 
-Make sure to get the following libraries:
+Emgu 3 is wired in, but the Kinect integration is out of date, and will likely get reworked at some point when it's time for depth sensing.
 
-Emgu - http://www.emgu.com/wiki/index.php/Main_Page
-Kinect SDK - http://www.microsoft.com/en-us/kinectforwindowsdev/start.aspx
-Windows SDK or just .NET SDK - http://msdn.microsoft.com/en-us/windows/hardware/hh852363.aspx
+Right now, the color detection works, but very jankily.  I need to wired up something better.
 
-All the necessary libraries should be included.  You might have to clean up some references, but it should be pretty close here.
+Chip tracking is also very basic, and breaks VERY quickly on crappy cameras.  I need to get something better than the horrifying webcam in my current computer.
 
-There's lots coming.  Once I can recognize and count chips, I plan on creating a display that will be projectable onto the poker table in real time.
+Next up . . . 
 
-I had initially planned to do this with RFID chips, and might down the road, but the Kinect and OpenCV are proving a pretty badass combination.  Features will keep coming as I dream them up.
+Instead of the Kinect, maybe we'll look at one of these.
 
-Ideally, I'd like to create a fully interactive poker table, with chip counts displayed right on the table, hand evaluation done automatically, and players able to interact with hand gestures, or through virtual interfaces projected on the table.
-
-Big plans, yes.  But we start small.  Counting a recognizing chips . . . that's the first step.
-
-Enjoy!
+https://stimulant.com/depth-sensor-shootout-2/
