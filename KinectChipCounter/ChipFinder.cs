@@ -1,5 +1,5 @@
 ﻿using Emgu.CV;
-using Emgu.CV.GPU;
+using Emgu.CV.Cuda;
 using Emgu.Util;
 using Emgu.CV.Structure;
 using Emgu.CV.CvEnum;
@@ -16,7 +16,7 @@ namespace KinectChipCounter
         public Emgu.CV.Image<Bgr, Byte> diagnosticImage;
         private Emgu.CV.Image<Bgr, Byte> graphImage;
 
-        private static GpuCascadeClassifier cc = new GpuCascadeClassifier("cascade.xml");
+        private static CascadeClassifier cc = new CascadeClassifier("cascade.xml");
 
         public ChipFinder(Emgu.CV.Image<Bgr, Byte> source, Emgu.CV.Image<Bgr,Byte> graph)
         {
@@ -28,13 +28,19 @@ namespace KinectChipCounter
         {
             try
             {
-                GpuImage<Bgr,Byte> gpuImg = new GpuImage<Bgr,Byte>(sourceImage);
-                GpuGaussianFilter<Bgr,Byte> gaussFilter = new GpuGaussianFilter<Bgr,byte>(new Size(11,11),0.8,0.8,BORDER_TYPE.CONSTANT,BORDER_TYPE.CONSTANT);
-                gaussFilter.Apply(gpuImg, gpuImg, null);
-                diagnosticImage = gpuImg.ToImage();
-                Rectangle[] rects = cc.DetectMultiScale(gpuImg.Convert<Gray, Byte>(), 1.1, 4, new System.Drawing.Size(10, 10));
+                //CudaImage<Bgr,Byte> gpuImg = new CudaImage<Bgr,Byte>(sourceImage);
+                //VectorOfGpuMat outVec = new VectorOfGpuMat();
+                //CudaGaussianFilter gaussFilter = new CudaGaussianFilter(DepthType.new Size(11,11),0.8,0.8,BorderType.Constant,BorderType.Constant);
+                //gaussFilter.Apply(gpuImg, gpuImg, null);
+                diagnosticImage = sourceImage.Clone();
+                Rectangle[] rects = cc.DetectMultiScale(sourceImage.Convert<Gray, Byte>(), 1.1, 4, new System.Drawing.Size(10, 10));
+                //cc.ScaleFactor = 1.1;
+                //cc.MinNeighbors = 4;
+                //cc.MinObjectSize = new Size(10, 10);
+                //cc.DetectMultiScale(gpuImg.Convert<Gray, Byte>(), outVec);
+                //Rectangle[] rects = cc.Convert(outVec);
 
-                foreach(Rectangle rect in rects)
+                foreach (Rectangle rect in rects)
                 {
                     reg.stackFound(rect);
                 }
