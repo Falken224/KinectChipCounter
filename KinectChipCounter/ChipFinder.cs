@@ -15,13 +15,19 @@ namespace KinectChipCounter
         private Emgu.CV.Image<Bgr, Byte> sourceImage;
         public Emgu.CV.Image<Bgr, Byte> diagnosticImage;
         private Emgu.CV.Image<Bgr, Byte> graphImage;
+        private Stack.Color? foundChipColor;
 
         private static CascadeClassifier cc = new CascadeClassifier("cascade.xml");
 
-        public ChipFinder(Emgu.CV.Image<Bgr, Byte> source, Emgu.CV.Image<Bgr,Byte> graph)
+        public ChipFinder(Emgu.CV.Image<Bgr, Byte> source, Emgu.CV.Image<Bgr, Byte> graph)  : this(source, graph, null)
+        {
+        }
+
+        public ChipFinder(Emgu.CV.Image<Bgr, Byte> source, Emgu.CV.Image<Bgr, Byte> graph, Stack.Color? foundColor)
         {
             sourceImage = source;
             graphImage = graph;
+            foundChipColor = foundColor;
         }
 
         public void findChips(StackRegistry reg)
@@ -43,9 +49,17 @@ namespace KinectChipCounter
                 foreach (Rectangle rect in rects)
                 {
                     reg.stackFound(rect);
+                    Point[] samplePoints = pickColorPoints(rect);
+                    foreach(Point sample in samplePoints)
+                    {
+                        diagnosticImage.Draw(new Rectangle(sample,new Size(1,1)), new Bgr(System.Drawing.Color.Yellow), 2);
+                    }
+                    if(foundChipColor!=null)
+                    {
+                        reg.trainChip(sourceImage, samplePoints, (Stack.Color)foundChipColor);
+                    }
+                    reg.nextFrame(sourceImage, graphImage, samplePoints);
                 }
-
-                reg.nextFrame(sourceImage, graphImage);
 
 
                 foreach (Rectangle rect in rects)
@@ -92,6 +106,16 @@ namespace KinectChipCounter
 
         }
 
+        public Point[] pickColorPoints(Rectangle foundChip)
+        {
+            Point[] ret = new Point[5];
+            ret[0] = new Point(foundChip.Left + (int)(foundChip.Width * .5), foundChip.Top + (int)(foundChip.Height * .5));
+            ret[1] = new Point(foundChip.Left + (int)(foundChip.Width * .85), foundChip.Top + (int)(foundChip.Height * .5));
+            ret[2] = new Point(foundChip.Left + (int)(foundChip.Width * .84), foundChip.Top + (int)(foundChip.Height * .58));
+            ret[3] = new Point(foundChip.Left + (int)(foundChip.Width * .5), foundChip.Top + (int)(foundChip.Height * .85));
+            ret[4] = new Point(foundChip.Left + (int)(foundChip.Width * .58), foundChip.Top + (int)(foundChip.Height * .84));
+            return ret;
+        }
     }
 
     public class Stack
@@ -116,11 +140,28 @@ namespace KinectChipCounter
         private static int FRAMES_TO_ESTABLISH = 10;
         private static int FRAMES_TO_DROP = 5;
 
+        private ColorFinder colorFinder = new ColorFinder();
+
         private ISet<Stack> stacks = new HashSet<Stack>();
         private ISet<Stack> foundThisFrame = new HashSet<Stack>();
         private ISet<Stack> potentialStacks = new HashSet<Stack>();
         private Dictionary<Stack, List<Rectangle>> rawFinds = new Dictionary<Stack, List<Rectangle>>();
     
+        public void trainChip(Image<Bgr, Byte> img, Point[] samplePoints, Stack.Color color)
+        {
+            List<Bgr> colorSamples = new List<Bgr>();
+            foreach (Point point in samplePoints)
+            {
+                colorSamples.Add(img[point]);
+            }
+            colorFinder.addTrainingPoint(colorSamples.ToArray(), color);
+        }
+
+        public void retrain()
+        {
+            colorFinder.retrain();
+        }
+
         public void stackFound(Rectangle rect)
         {
             foreach(Stack stack in stacks)
@@ -159,7 +200,7 @@ namespace KinectChipCounter
             potentialStacks.Add(newStack);
         }
 
-        public void nextFrame(Image<Bgr,Byte> img, Image<Bgr,Byte> graph)
+        public void nextFrame(Image<Bgr,Byte> img, Image<Bgr,Byte> graph, Point[] samplePoints)
         {
             ISet<Stack> missed = new HashSet<Stack>(stacks);
             missed.UnionWith(potentialStacks);
@@ -199,32 +240,40 @@ namespace KinectChipCounter
 
                     graph.Draw(new CircleF(new PointF((graph.Width / 360) * c.GetHue(), graph.Height - (graph.Height * c.GetSaturation())), 2), new Bgr(c.GetBrightness()*255, c.GetBrightness()*255, c.GetBrightness()*255), 2);
 
-                    if (c.GetBrightness() < 0.25 && c.GetSaturation() < 0.3)
+                    List<Bgr> colorSamples = new List<Bgr>();
+                    foreach(Point point in samplePoints)
                     {
-                        stack.color = Stack.Color.Black;
-                    } else if(c.GetBrightness() > 0.7)
-                    {
-                        stack.color = Stack.Color.White;
+                        colorSamples.Add(img[point]);
                     }
-                    else
-                    {
-                        if (c.GetHue() > 330 || c.GetHue() < 30)
-                        {
-                            stack.color = Stack.Color.Red;
-                        }
-                        else if (c.GetHue() >= 210 && c.GetHue() <= 270 && c.GetSaturation() > 0.5)
-                        {
-                            stack.color = Stack.Color.Blue;
-                        }
-                        else if (c.GetHue() >= 90 && c.GetHue() <= 200)
-                        {
-                            stack.color = Stack.Color.Green;
-                        }
-                        else if (c.GetHue() > 180 && c.GetHue() < 215)
-                        {
-                            stack.color = Stack.Color.White;
-                        }
-                    }
+                    stack.color = this.colorFinder.guessColor(colorSamples.ToArray());
+
+                    /* The old color determination function */
+                    //if (c.GetBrightness() < 0.25 && c.GetSaturation() < 0.3)
+                    //{
+                    //    stack.color = Stack.Color.Black;
+                    //} else if(c.GetBrightness() > 0.7)
+                    //{
+                    //    stack.color = Stack.Color.White;
+                    //}
+                    //else
+                    //{
+                    //    if (c.GetHue() > 330 || c.GetHue() < 30)
+                    //    {
+                    //        stack.color = Stack.Color.Red;
+                    //    }
+                    //    else if (c.GetHue() >= 210 && c.GetHue() <= 270 && c.GetSaturation() > 0.5)
+                    //    {
+                    //        stack.color = Stack.Color.Blue;
+                    //    }
+                    //    else if (c.GetHue() >= 90 && c.GetHue() <= 200)
+                    //    {
+                    //        stack.color = Stack.Color.Green;
+                    //    }
+                    //    else if (c.GetHue() > 180 && c.GetHue() < 215)
+                    //    {
+                    //        stack.color = Stack.Color.White;
+                    //    }
+                    //}
                 }
             }
             foundThisFrame.Clear();

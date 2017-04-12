@@ -32,6 +32,7 @@ namespace KinectChipCounter
         private int ctrlMaxDepth = 0;
 
         private StackRegistry stackReg = new StackRegistry();
+        private Stack.Color? nextChipColor = null;
 
         public MainForm()
         {
@@ -201,13 +202,14 @@ namespace KinectChipCounter
         {
             Image<Bgr, Byte> img = cap.QueryFrame().ToImage<Bgr,Byte>();
             Image<Bgr, Byte> graphImage = (Image<Bgr, Byte>)hueGraph.Image;
-            ChipFinder cf = new ChipFinder(img, graphImage);
+            ChipFinder cf = new ChipFinder(img, graphImage, nextChipColor);
             cf.findChips(stackReg);
             analysisImgBox.Image = cf.diagnosticImage.Flip(Emgu.CV.CvEnum.FlipType.Horizontal);
             img = img.Flip(Emgu.CV.CvEnum.FlipType.Horizontal);
             imageBox1.Image = img.Convert<Gray, Byte>();
             hueGraph.Image = graphImage;
             handlingColorFrame = false;
+            nextChipColor = null;
         }
 
         //private void colorImageReady(object sender, ColorImageFrameReadyEventArgs args)
@@ -257,6 +259,7 @@ namespace KinectChipCounter
         {
             if(!videoToggle)
             {
+                nextChipColor = null;
                 Image<Bgr,Byte> graphImage = new Image<Bgr, Byte>(640,480);
                 graphImage.FillConvexPoly(
                     new Point[]{
@@ -290,6 +293,38 @@ namespace KinectChipCounter
                 //}
                 videoToggle = !videoToggle;
             }
+        }
+
+        private void btnWhite_Click(object sender, EventArgs e)
+        {
+            nextChipColor = Stack.Color.White;
+        }
+
+        private void btnRed_Click(object sender, EventArgs e)
+        {
+            nextChipColor = Stack.Color.Red;
+        }
+
+        private void btnBlue_Click(object sender, EventArgs e)
+        {
+            nextChipColor = Stack.Color.Blue;
+
+        }
+
+        private void btnGreen_Click(object sender, EventArgs e)
+        {
+            nextChipColor = Stack.Color.Green;
+
+        }
+
+        private void btnBlack_Click(object sender, EventArgs e)
+        {
+            nextChipColor = Stack.Color.Black;
+        }
+
+        private void button6_Click(object sender, EventArgs e)
+        {
+            stackReg.retrain();
         }
     }
 }
