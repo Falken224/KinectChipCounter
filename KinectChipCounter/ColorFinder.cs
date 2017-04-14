@@ -1,23 +1,43 @@
-﻿using Emgu.CV.Structure;
+﻿using Emgu.CV;
+using Emgu.CV.Structure;
 using NeuralNetworks;
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using System.Drawing;
 
 namespace KinectChipCounter
 {
     class ColorFinder
     {
+        private static volatile ColorFinder instance;
+        private static object sync = new Object();
+
+        private static ColorFinder Instance
+        {
+            get
+            {
+                if (instance == null)
+                {
+                    lock (sync)
+                    {
+                        if (instance == null)
+                            instance = new ColorFinder();
+                    }
+                }
+                return instance;
+            }
+        }
+
         private List<DataSet> trainingData = new List<DataSet>();
         private NeuralNetworks.BackPropogationNetwork ann = new NeuralNetworks.BackPropogationNetwork(15, 5, 15, 1);
 
-        public Stack.Color guessColor(Bgr[] colors)
+        private ColorFinder() { }
+
+        public static Stack.Color guessColor(Bgr[] colors)
         {
-            ann.ApplyInput(convertBgrListToInputArray(colors));
-            ann.CalculateOutput();
-            IEnumerable<double> output = ann.ReadOutput();
+            Instance.ann.ApplyInput(convertBgrListToInputArray(colors));
+            Instance.ann.CalculateOutput();
+            IEnumerable<double> output = Instance.ann.ReadOutput();
             int index = 0;
             int greatestIndex = -1;
             double greatest = -1;
@@ -33,7 +53,7 @@ namespace KinectChipCounter
             return (Stack.Color)(Enum.GetValues(typeof(Stack.Color)).GetValue(greatestIndex));
         }
 
-        private double[] convertBgrListToInputArray(Bgr[] samples)
+        private static double[] convertBgrListToInputArray(Bgr[] samples)
         {
             List<double> colorChannelNormalized = new List<double>();
             foreach (Bgr sample in samples)
@@ -45,7 +65,7 @@ namespace KinectChipCounter
             return colorChannelNormalized.ToArray();
         }
 
-        private double[] convertChipColorToOutput(Stack.Color chipColor)
+        private static double[] convertChipColorToOutput(Stack.Color chipColor)
         {
             List<double> correctOutputs = new List<double>();
             foreach(Stack.Color color in Enum.GetValues(typeof(Stack.Color)))
@@ -61,18 +81,28 @@ namespace KinectChipCounter
             return correctOutputs.ToArray();
         }
 
-        public void addTrainingPoint(Bgr[] samples, Stack.Color correctColor)
+        public static void addTrainingPoint(Bgr[] samples, Stack.Color correctColor)
         {
             DataSet dataSet = new DataSet();
             dataSet.Inputs = convertBgrListToInputArray(samples);
             dataSet.Outputs = convertChipColorToOutput(correctColor);
-            trainingData.Add(dataSet);
+            Instance.trainingData.Add(dataSet);
             retrain();
         }
 
-        public void retrain()
+        public static void retrain()
         {
-            ann.BatchBackPropogate(trainingData.ToArray(), 1000, 0.1, 0.9);
+            Instance.ann.BatchBackPropogate(Instance.trainingData.ToArray(), 1000, 0.1, 0.9);
+        }
+
+        public static void trainChip(Image<Bgr, Byte> img, Point[] samplePoints, Stack.Color color)
+        {
+            List<Bgr> colorSamples = new List<Bgr>();
+            foreach (Point point in samplePoints)
+            {
+                colorSamples.Add(img[point]);
+            }
+            ColorFinder.addTrainingPoint(colorSamples.ToArray(), color);
         }
     }
 }

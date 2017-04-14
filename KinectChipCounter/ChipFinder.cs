@@ -30,7 +30,7 @@ namespace KinectChipCounter
             foundChipColor = foundColor;
         }
 
-        public void findChips(StackRegistry reg)
+        public void findChips()
         {
             try
             {
@@ -48,29 +48,20 @@ namespace KinectChipCounter
 
                 foreach (Rectangle rect in rects)
                 {
-                    reg.stackFound(rect);
-                    Point[] samplePoints = pickColorPoints(rect);
-                    foreach(Point sample in samplePoints)
-                    {
-                        diagnosticImage.Draw(new Rectangle(sample,new Size(1,1)), new Bgr(System.Drawing.Color.Yellow), 2);
-                    }
-                    if(foundChipColor!=null)
-                    {
-                        reg.trainChip(sourceImage, samplePoints, (Stack.Color)foundChipColor);
-                    }
-                    reg.nextFrame(sourceImage, graphImage, samplePoints);
+                    StackRegistry.stackFound(rect);
                 }
 
+                List<Stack> processedStacks = StackRegistry.processFrame(sourceImage);
 
-                foreach (Rectangle rect in rects)
+                if (foundChipColor != null)
                 {
-                    diagnosticImage.Draw(rect, new Bgr(255, 255, 255), 2);
+                    if (processedStacks.Count == 1)
+                    {
+                        ColorFinder.trainChip(sourceImage, processedStacks[0].samplePoints, (Stack.Color)foundChipColor);
+                    }
                 }
-                foreach (Stack stack in reg.listPotentialStacks())
-                {
-                    diagnosticImage.Draw(stack.location, new Bgr(0, 255, 255), 2);
-                }
-                foreach (Stack stack in reg.listEstablishedStacks())
+
+                foreach (Stack stack in processedStacks)
                 {
                     Bgr col = new Bgr(Color.Magenta);
                     switch(stack.color)
@@ -93,10 +84,11 @@ namespace KinectChipCounter
 
                     }
                     diagnosticImage.Draw(stack.location, col, 2);
-                }
-                foreach (Stack stack in reg.listDroppingStacks())
-                {
-                    diagnosticImage.Draw(stack.location, new Bgr(255, 255, 0), 2);
+                    foreach (Point sample in stack.samplePoints)
+                    {
+                        diagnosticImage.Draw(new Rectangle(sample, new Size(1, 1)), new Bgr(System.Drawing.Color.Yellow), 2);
+                    }
+
                 }
             }
             catch (Exception ex)
@@ -105,24 +97,12 @@ namespace KinectChipCounter
             }
 
         }
-
-        public Point[] pickColorPoints(Rectangle foundChip)
-        {
-            Point[] ret = new Point[5];
-            ret[0] = new Point(foundChip.Left + (int)(foundChip.Width * .5), foundChip.Top + (int)(foundChip.Height * .5));
-            ret[1] = new Point(foundChip.Left + (int)(foundChip.Width * .85), foundChip.Top + (int)(foundChip.Height * .5));
-            ret[2] = new Point(foundChip.Left + (int)(foundChip.Width * .84), foundChip.Top + (int)(foundChip.Height * .58));
-            ret[3] = new Point(foundChip.Left + (int)(foundChip.Width * .5), foundChip.Top + (int)(foundChip.Height * .85));
-            ret[4] = new Point(foundChip.Left + (int)(foundChip.Width * .58), foundChip.Top + (int)(foundChip.Height * .84));
-            return ret;
-        }
     }
 
     public class Stack
     {
         public Rectangle location;
-        public int consecutiveFrames;
-        public int missedFrames;
+        public Point[] samplePoints;
         public Color color;
 
         public enum Color
@@ -135,36 +115,39 @@ namespace KinectChipCounter
         }
     }
 
-    public class StackRegistry
+    public sealed class StackRegistry
     {
-        private static int FRAMES_TO_ESTABLISH = 10;
-        private static int FRAMES_TO_DROP = 5;
+        private static volatile StackRegistry instance;
+        private static object sync = new Object();
 
-        private ColorFinder colorFinder = new ColorFinder();
-
-        private ISet<Stack> stacks = new HashSet<Stack>();
-        private ISet<Stack> foundThisFrame = new HashSet<Stack>();
-        private ISet<Stack> potentialStacks = new HashSet<Stack>();
-        private Dictionary<Stack, List<Rectangle>> rawFinds = new Dictionary<Stack, List<Rectangle>>();
-    
-        public void trainChip(Image<Bgr, Byte> img, Point[] samplePoints, Stack.Color color)
+        private static StackRegistry Instance
         {
-            List<Bgr> colorSamples = new List<Bgr>();
-            foreach (Point point in samplePoints)
+            get
             {
-                colorSamples.Add(img[point]);
+                if (instance == null)
+                {
+                    lock (sync)
+                    {
+                        if (instance == null)
+                            instance = new StackRegistry();
+                    }
+                }
+                return instance;
             }
-            colorFinder.addTrainingPoint(colorSamples.ToArray(), color);
         }
 
-        public void retrain()
+        private ISet<Rectangle> foundThisFrame = new HashSet<Rectangle>();
+
+        private StackRegistry() { }
+
+        public static void stackFound(Rectangle rect)
         {
-            colorFinder.retrain();
+            Instance.foundThisFrame.Add(rect);
         }
 
-        public void stackFound(Rectangle rect)
+        private static bool correlateRectangles(Rectangle rect, Dictionary<Stack, List<Rectangle>> correlatedFinds)
         {
-            foreach(Stack stack in stacks)
+            foreach (Stack stack in correlatedFinds.Keys)
             {
                 if (rect.IntersectsWith(stack.location))
                 {
@@ -172,162 +155,81 @@ namespace KinectChipCounter
                     check.Intersect(stack.location);
                     if ((check.Width > stack.location.Width * 0.5) && (check.Height > stack.location.Height * 0.5))
                     {
-                        foundThisFrame.Add(stack);
-                        if (!rawFinds.ContainsKey(stack)) rawFinds.Add(stack, new List<Rectangle>());
-                        rawFinds[stack].Add(rect);
-                        return;
+                        correlatedFinds[stack].Add(rect);
+                        stack.location = averageRectangles(correlatedFinds[stack]);
+                        return true;
                     }
                 }
             }
-            foreach(Stack stack in potentialStacks)
-            {
-                if (rect.IntersectsWith(stack.location))
-                {
-                    Rectangle check = new Rectangle(rect.X, rect.Y, rect.Width, rect.Height);
-                    check.Intersect(stack.location);
-                    if ((check.Width > stack.location.Width * 0.5) && (check.Height > stack.location.Height * 0.5))
-                    {
-                        foundThisFrame.Add(stack);
-                        if (!rawFinds.ContainsKey(stack)) rawFinds.Add(stack, new List<Rectangle>());
-                        rawFinds[stack].Add(rect);
-                        return;
-                    }
-                }
-            }
-            Stack newStack = new Stack();
-            newStack.location = rect;
-            newStack.consecutiveFrames = 1;
-            potentialStacks.Add(newStack);
+            return false;
         }
 
-        public void nextFrame(Image<Bgr,Byte> img, Image<Bgr,Byte> graph, Point[] samplePoints)
+        public static Rectangle averageRectangles(List<Rectangle> correlatedRectangles)
         {
-            ISet<Stack> missed = new HashSet<Stack>(stacks);
-            missed.UnionWith(potentialStacks);
-            missed.ExceptWith(foundThisFrame);
-            foreach(Stack stack in missed)
+            Rectangle newLocation = new Rectangle();
+            int count = correlatedRectangles.Count;
+            int widthTotal = 0;
+            int heightTotal = 0;
+            int centerXTotal = 0;
+            int centerYTotal = 0;
+            foreach (Rectangle rect in correlatedRectangles)
             {
-                if(stack.missedFrames >= FRAMES_TO_DROP)
-                {
-                    if(stacks.Contains(stack))
-                    {
-                        graph.FillConvexPoly(
-                            new Point[]{
-                                new Point(0,0),
-                                new Point(graph.Width,0),
-                                new Point(graph.Width,graph.Height),
-                                new Point(0,graph.Height)
-                            }, new Bgr(Color.Black));
-                    }
-                    stacks.Remove(stack);
-                    potentialStacks.Remove(stack);
-                }
-                else
-                {
-                    stack.missedFrames += 1;
-                    stack.consecutiveFrames = 0;
-                }
+                widthTotal += rect.Width;
+                heightTotal += rect.Height;
+                centerXTotal += rect.X + (rect.Width / 2);
+                centerYTotal += rect.Y + (rect.Height / 2);
             }
-            foreach(Stack stack in foundThisFrame)
-            {
-                stack.consecutiveFrames = stack.consecutiveFrames>=256?256:stack.consecutiveFrames+1;
-                stack.missedFrames = 0;
-                if(stack.consecutiveFrames > FRAMES_TO_ESTABLISH)
-                {
-                    stacks.Add(stack);
-                    potentialStacks.Remove(stack);
-                    Color c = img.Bitmap.GetPixel(stack.location.X + stack.location.Width / 2, stack.location.Y + stack.location.Height / 2);
-
-                    graph.Draw(new CircleF(new PointF((graph.Width / 360) * c.GetHue(), graph.Height - (graph.Height * c.GetSaturation())), 2), new Bgr(c.GetBrightness()*255, c.GetBrightness()*255, c.GetBrightness()*255), 2);
-
-                    List<Bgr> colorSamples = new List<Bgr>();
-                    foreach(Point point in samplePoints)
-                    {
-                        colorSamples.Add(img[point]);
-                    }
-                    stack.color = this.colorFinder.guessColor(colorSamples.ToArray());
-
-                    /* The old color determination function */
-                    //if (c.GetBrightness() < 0.25 && c.GetSaturation() < 0.3)
-                    //{
-                    //    stack.color = Stack.Color.Black;
-                    //} else if(c.GetBrightness() > 0.7)
-                    //{
-                    //    stack.color = Stack.Color.White;
-                    //}
-                    //else
-                    //{
-                    //    if (c.GetHue() > 330 || c.GetHue() < 30)
-                    //    {
-                    //        stack.color = Stack.Color.Red;
-                    //    }
-                    //    else if (c.GetHue() >= 210 && c.GetHue() <= 270 && c.GetSaturation() > 0.5)
-                    //    {
-                    //        stack.color = Stack.Color.Blue;
-                    //    }
-                    //    else if (c.GetHue() >= 90 && c.GetHue() <= 200)
-                    //    {
-                    //        stack.color = Stack.Color.Green;
-                    //    }
-                    //    else if (c.GetHue() > 180 && c.GetHue() < 215)
-                    //    {
-                    //        stack.color = Stack.Color.White;
-                    //    }
-                    //}
-                }
-            }
-            foundThisFrame.Clear();
-            foreach(Stack stack in rawFinds.Keys)
-            {
-                int count = rawFinds[stack].Count;
-                int widthTotal = 0;
-                int heightTotal = 0;
-                int centerXTotal = 0;
-                int centerYTotal = 0;
-                foreach(Rectangle rect in rawFinds[stack])
-                {
-                    widthTotal+=rect.Width;
-                    heightTotal+=rect.Height;
-                    centerXTotal+=rect.X+(rect.Width/2);
-                    centerYTotal+=rect.Y+(rect.Height/2);
-                }
-                stack.location.Width = widthTotal / count;
-                stack.location.Height = heightTotal / count;
-                stack.location.X = (centerXTotal / count) - (stack.location.Width / 2);
-                stack.location.Y = (centerYTotal / count) - (stack.location.Height / 2);
-            }
-            rawFinds.Clear();
+            newLocation.Width = widthTotal / count;
+            newLocation.Height = heightTotal / count;
+            newLocation.X = (centerXTotal / count) - (newLocation.Width / 2);
+            newLocation.Y = (centerYTotal / count) - (newLocation.Height / 2);
+            return newLocation;
         }
 
-        public ISet<Stack> listPotentialStacks()
+        private static void trimRange(Stack stack, List<Rectangle> rectangles)
         {
-            ISet<Stack> ret = new HashSet<Stack>();
-            foreach (Stack stack in potentialStacks)
+            foreach(Rectangle rect in rectangles)
             {
-                ret.Add(stack);
+                stack.location.Intersect(rect);
             }
-            return ret;
         }
 
-        public ISet<Stack> listEstablishedStacks()
+        public static List<Stack> processFrame(Image<Bgr, Byte> img)
         {
-            ISet<Stack> ret = new HashSet<Stack>();
-            foreach (Stack stack in stacks)
+            Dictionary<Stack, List<Rectangle>> correlatedFinds = new Dictionary<Stack, List<Rectangle>>();
+            foreach (Rectangle rect in Instance.foundThisFrame)
             {
-                if (stack.missedFrames == 0)
-                    ret.Add(stack);
+                if(!correlateRectangles(rect,correlatedFinds))
+                {
+                    Stack stack = new Stack();
+                    stack.location = rect;
+                    correlatedFinds[stack] = new List<Rectangle>();
+                    correlatedFinds[stack].Add(rect);
+                }
             }
-            return ret;
+            foreach (Stack stack in correlatedFinds.Keys)
+            {
+                List<Bgr> colorSamples = new List<Bgr>();
+                trimRange(stack, correlatedFinds[stack]);
+                stack.samplePoints = pickColorPoints(stack.location);
+                foreach (Point point in stack.samplePoints)
+                {
+                    colorSamples.Add(img[point]);
+                }
+                stack.color = ColorFinder.guessColor(colorSamples.ToArray());
+            }
+            Instance.foundThisFrame.Clear();
+            return new List<Stack>(correlatedFinds.Keys);
         }
 
-        public ISet<Stack> listDroppingStacks()
+        private static Point[] pickColorPoints(Rectangle foundChip)
         {
-            ISet<Stack> ret = new HashSet<Stack>();
-            foreach (Stack stack in stacks)
-            {
-                if (stack.missedFrames > 0)
-                    ret.Add(stack);
-            }
+            Point[] ret = new Point[5];
+            ret[0] = new Point(foundChip.Left + (int)(foundChip.Width * .5), foundChip.Top + (int)(foundChip.Height * .5));
+            ret[1] = new Point(foundChip.Left + (int)(foundChip.Width * .85), foundChip.Top + (int)(foundChip.Height * .5));
+            ret[2] = new Point(foundChip.Left + (int)(foundChip.Width * .84), foundChip.Top + (int)(foundChip.Height * .58));
+            ret[3] = new Point(foundChip.Left + (int)(foundChip.Width * .5), foundChip.Top + (int)(foundChip.Height * .85));
+            ret[4] = new Point(foundChip.Left + (int)(foundChip.Width * .58), foundChip.Top + (int)(foundChip.Height * .84));
             return ret;
         }
     }

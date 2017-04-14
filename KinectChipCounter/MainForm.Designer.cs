@@ -29,9 +29,6 @@
         private void InitializeComponent()
         {
             this.components = new System.ComponentModel.Container();
-            this.btnTiltUp = new System.Windows.Forms.Button();
-            this.btnTiltDown = new System.Windows.Forms.Button();
-            this.lblAngle = new System.Windows.Forms.Label();
             this.imageBox1 = new Emgu.CV.UI.ImageBox();
             this.btnCapture = new System.Windows.Forms.Button();
             this.imageBox2 = new Emgu.CV.UI.ImageBox();
@@ -48,38 +45,6 @@
             ((System.ComponentModel.ISupportInitialize)(this.analysisImgBox)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.hueGraph)).BeginInit();
             this.SuspendLayout();
-            // 
-            // btnTiltUp
-            // 
-            this.btnTiltUp.Location = new System.Drawing.Point(9, 10);
-            this.btnTiltUp.Margin = new System.Windows.Forms.Padding(2);
-            this.btnTiltUp.Name = "btnTiltUp";
-            this.btnTiltUp.Size = new System.Drawing.Size(67, 30);
-            this.btnTiltUp.TabIndex = 0;
-            this.btnTiltUp.Text = "Tilt Up";
-            this.btnTiltUp.UseVisualStyleBackColor = true;
-            this.btnTiltUp.Click += new System.EventHandler(this.btnTiltUp_Click);
-            // 
-            // btnTiltDown
-            // 
-            this.btnTiltDown.Location = new System.Drawing.Point(11, 58);
-            this.btnTiltDown.Margin = new System.Windows.Forms.Padding(2);
-            this.btnTiltDown.Name = "btnTiltDown";
-            this.btnTiltDown.Size = new System.Drawing.Size(67, 30);
-            this.btnTiltDown.TabIndex = 1;
-            this.btnTiltDown.Text = "Tilt Down";
-            this.btnTiltDown.UseVisualStyleBackColor = true;
-            this.btnTiltDown.Click += new System.EventHandler(this.btnTiltDown_Click);
-            // 
-            // lblAngle
-            // 
-            this.lblAngle.AutoSize = true;
-            this.lblAngle.Location = new System.Drawing.Point(9, 42);
-            this.lblAngle.Margin = new System.Windows.Forms.Padding(2, 0, 2, 0);
-            this.lblAngle.Name = "lblAngle";
-            this.lblAngle.Size = new System.Drawing.Size(40, 13);
-            this.lblAngle.TabIndex = 2;
-            this.lblAngle.Text = "Angle: ";
             // 
             // imageBox1
             // 
@@ -204,9 +169,6 @@
             this.Controls.Add(this.imageBox2);
             this.Controls.Add(this.btnCapture);
             this.Controls.Add(this.imageBox1);
-            this.Controls.Add(this.lblAngle);
-            this.Controls.Add(this.btnTiltDown);
-            this.Controls.Add(this.btnTiltUp);
             this.Margin = new System.Windows.Forms.Padding(2);
             this.Name = "MainForm";
             this.Text = "Form1";
@@ -215,15 +177,10 @@
             ((System.ComponentModel.ISupportInitialize)(this.analysisImgBox)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this.hueGraph)).EndInit();
             this.ResumeLayout(false);
-            this.PerformLayout();
 
         }
 
         #endregion
-
-        private System.Windows.Forms.Button btnTiltUp;
-        private System.Windows.Forms.Button btnTiltDown;
-        private System.Windows.Forms.Label lblAngle;
         private Emgu.CV.UI.ImageBox imageBox1;
         private System.Windows.Forms.Button btnCapture;
         private Emgu.CV.UI.ImageBox imageBox2;
